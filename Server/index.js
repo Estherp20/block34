@@ -102,4 +102,5 @@ app.delete('/api/customers/:customer_id/reservations/:id', async(req, res, next)
     } catch(ex){
         next(ex);
     }
-})
+});
+
