@@ -7,21 +7,22 @@ const client = new pg.Client(process.env.DATABASE_URL || 'postgres://localhost/a
 const createTables = async()=> {
     const SQL = `
         DROP TABLE IF EXISTS reservation;
-        DROP TABLE IF EXISTS users;
-        DROP TABLE IF EXISTS hotels;
-        CREATE TABLE users(
+        DROP TABLE IF EXISTS customer;
+        DROP TABLE IF EXISTS restaurants;
+        CREATE TABLE customer(
             id UUID PRIMARY KEY,
             name VARCHAR(50) NOT NULL UNIQUE
         );
-        CREATE TABLE hotels(
+        CREATE TABLE restaurants(
             id UUID PRIMARY KEY,
             name VARCHAR(50) NOT NULL UNIQUE
         );
         CREATE TABLE reservation(
             id UUID PRIMARY KEY,
-            departure_date DATE NOT NULL,
-            user_id UUID REFERENCES users(id) NOT NULL,
-            hotels_id UUID REFERENCES hotels(id) NOT NULL
+            date DATE NOT NULL,
+            party_count integer NOT NULL,
+            customer_id UUID REFERENCES customer(id) NOT NULL,
+            restaurants_id UUID REFERENCES restaurants(id) NOT NULL
         );
     `;
     
@@ -29,45 +30,45 @@ const createTables = async()=> {
 };
 
 
-const createUser = async(name)=> {
+const createCustomer = async({name})=> {
     const SQL = `
-      INSERT INTO users(id, name) VALUES($1, $2) RETURNING *
+      INSERT INTO customer(id, name) VALUES($1, $2) RETURNING *
     `;
     const response = await client.query(SQL, [uuid.v4(), name]);
     return response.rows[0];
   };
   
-  const createHotel = async(name)=> {
+  const createRestaurants = async({name})=> {
     const SQL = `
-      INSERT INTO hotel(id, name) VALUES($1, $2) RETURNING *
+      INSERT INTO restaurants(id, name) VALUES($1, $2) RETURNING *
     `;
     const response = await client.query(SQL, [uuid.v4(), name]);
     return response.rows[0];
   }; 
 
-  const fetchUsers = async()=> {
+  const fetchCustomer = async()=> {
     const SQL = `
   SELECT *
-  FROM users
+  FROM customer
     `;
     const response = await client.query(SQL);
     return response.rows;
   };
   
-  const fetchHotel = async()=> {
+  const fetchRestaurants = async()=> {
     const SQL = `
   SELECT *
-  FROM hotels
+  FROM restaurants
     `;
     const response = await client.query(SQL);
     return response.rows;
   };    
   
-  const createReservation = async({ hotel_id, user_id, departure_date})=> {
+  const createReservation = async({ restaurants_id, customer_id, date, party_count})=> {
     const SQL = `
-      INSERT INTO reservation(id, hotel_id, user_id, departure_date) VALUES($1, $2, $3, $4) RETURNING *
+      INSERT INTO reservation(id, restaurants_id, customer_id, date, party_count) VALUES($1, $2, $3, $4, $5) RETURNING *
     `;
-    const response = await client.query(SQL, [uuid.v4(), hotel_id, user_id, departure_date]);
+    const response = await client.query(SQL, [uuid.v4(), restaurants_id, customer_id, date, party_count]);
     return response.rows[0];
   };
   
@@ -81,14 +82,24 @@ const createUser = async(name)=> {
     return response.rows;
   }; 
 
+  const destroyReservation = async({ id, customer_id}) => {
+    console.log( id, customer_id)
+    const SQL = `
+    DELETE FROM reservation
+    WHERE id=$1 and customer_id=$2
+    `;
+    await client.query(SQL, [id, customer_id]);
+  }
+
 
 module.exports = {
   client,
   createTables,
-  createUser,
-  createHotel,
-  fetchHotel,
-  fetchUsers,
+  createCustomer,
+  createRestaurants,
+  fetchRestaurants,
+  fetchCustomer,
   createReservation,
   fetchReservation,
+  destroyReservation
 }; 
